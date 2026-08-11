@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro - Quỹ Thời Gian</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --danger-color: #f44336;
+            --bg-color: #f9fafb;
+            --box-bg: #ffffff;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            background-color: var(--box-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        h2 { margin-top: 0; color: #111; }
+        #bankDisplay {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: 500; }
+        input[type="text"] {
+            width: 90%;
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        input[type="text"]:disabled { background-color: #e9ecef; }
+        #timerDisplay {
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 20px 0;
+            font-variant-numeric: tabular-nums;
+        }
+        .btn-group button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            margin: 0 5px;
+            transition: opacity 0.2s;
+        }
+        .btn-group button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #btnStart { background-color: var(--primary-color); }
+        #btnStop { background-color: var(--danger-color); }
+        
+        .history-section { margin-top: 30px; text-align: left; }
+        .history-section h3 { font-size: 1.1rem; margin-bottom: 10px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            text-align: center;
+        }
+        th:first-child, td:first-child { text-align: left; }
+        th { background-color: #f1f3f5; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Pomodoro - Quỹ Thời Gian</h2>
+    <div id="bankDisplay">Quỹ thời gian: 00:00</div>
+
+    <div class="input-group">
+        <label for="taskEntry">Tên công việc đang làm:</label>
+        <input type="text" id="taskEntry" placeholder="Nhập tên công việc...">
+    </div>
+
+    <div id="timerDisplay">24:00</div>
+
+    <div class="btn-group">
+        <button id="btnStart" onclick="startTimer()">Bắt đầu</button>
+        <button id="btnStop" onclick="stopTimer()" disabled>Dừng & Cộng dồn</button>
+    </div>
+
+    <div class="history-section">
+        <h3>Lịch sử công việc:</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Công việc</th>
+                    <th>Thời gian làm</th>
+                    <th>Tích luỹ</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody">
+                <!-- Dữ liệu lịch sử sẽ render ở đây -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Cấu hình
+    const BLOCK_MINUTES = 24;
+    const BLOCK_SECONDS = BLOCK_MINUTES * 60;
+
+    // Biến trạng thái
+    let isRunning = false;
+    let elapsedSeconds = 0;
+    let timeBank = 0;
+    let timerInterval = null;
+    let historyData = [];
+
+    // Khởi tạo
+    window.onload = () => {
+        loadData();
+        updateBankDisplay();
+        renderHistory();
+        document.getElementById('timerDisplay').innerText = formatTime(BLOCK_SECONDS, false);
+    };
+
+    // Hàm load dữ liệu từ LocalStorage (thay thế SQLite)
+    function loadData() {
+        timeBank = parseInt(localStorage.getItem('pomodoro_bank')) || 0;
+        let storedHistory = localStorage.getItem('pomodoro_history');
+        if (storedHistory) {
+            historyData = JSON.parse(storedHistory);
+        }
+    }
+
+    // Hàm lưu dữ liệu vào LocalStorage
+    function saveData() {
+        localStorage.setItem('pomodoro_bank', timeBank);
+        localStorage.setItem('pomodoro_history', JSON.stringify(historyData));
+    }
+
+    // Hàm format thời gian (giống hàm trong Python)
+    function formatTime(seconds, showSign = true) {
+        let sign = seconds < 0 ? "-" : "";
+        let absSeconds = Math.abs(seconds);
+        let mins = Math.floor(absSeconds / 60).toString().padStart(2, '0');
+        let secs = (absSeconds % 60).toString().padStart(2, '0');
+        
+        if (showSign && sign === "-") return `-${mins}:${secs}`;
+        return `${mins}:${secs}`;
+    }
+
+    // Cập nhật hiển thị Quỹ thời gian
+    function updateBankDisplay() {
+        const bankEl = document.getElementById('bankDisplay');
+        let color = timeBank >= 0 ? "green" : "red";
+        let sign = timeBank > 0 ? "+" : "";
+        bankEl.innerText = `Quỹ thời gian: ${sign}${formatTime(timeBank)}`;
+        bankEl.style.color = color;
+    }
+
+    // Render bảng lịch sử
+    function renderHistory() {
+        const tbody = document.getElementById('historyTableBody');
+        tbody.innerHTML = ''; // Clear cũ
+        
+        historyData.forEach(item => {
+            let sign = item.saved > 0 ? "+" : "";
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.task}</td>
+                <td>${formatTime(item.elapsed, false)}</td>
+                <td>${sign}${formatTime(item.saved)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- CÁC HÀM XỬ LÝ ĐỒNG HỒ ---
+    function startTimer() {
+        const taskInput = document.getElementById('taskEntry');
+        if (!taskInput.value.trim()) {
+            alert("Vui lòng nhập tên công việc trước khi bắt đầu!");
+            return;
+        }
+
+        isRunning = true;
+        elapsedSeconds = 0;
+        
+        // Cập nhật UI
+        document.getElementById('btnStart').disabled = true;
+        document.getElementById('btnStop').disabled = false;
+        taskInput.disabled = true;
+        document.getElementById('timerDisplay').style.color = "#333";
+        
+        // Chạy tick mỗi giây
+        timerInterval = setInterval(tick, 1000);
+    }
+
+    function stopTimer() {
+        isRunning = false;
+        clearInterval(timerInterval);
+        
+        // Tính toán dư/âm
+        let savedTime = BLOCK_SECONDS - elapsedSeconds;
+        timeBank += savedTime;
+        
+        // Lưu lịch sử (đẩy vào đầu mảng)
+        const taskName = document.getElementById('taskEntry').value.trim();
+        historyData.unshift({ task: taskName, elapsed: elapsedSeconds, saved: savedTime });
+        // Chỉ giữ 20 dòng gần nhất giống bản Python
+        if (historyData.length > 20) historyData.pop(); 
+        
+        saveData();
+        
+        // Reset Giao diện
+        updateBankDisplay();
+        renderHistory();
+        document.getElementById('timerDisplay').innerText = formatTime(BLOCK_SECONDS, false);
+        document.getElementById('timerDisplay').style.color = "#333";
+        document.getElementById('btnStart').disabled = false;
+        document.getElementById('btnStop').disabled = true;
+        
+        const taskInput = document.getElementById('taskEntry');
+        taskInput.disabled = false;
+        taskInput.value = '';
+
+        let msg = savedTime >= 0 ? "hoàn thành sớm" : "lố giờ";
+        // Dùng setTimeout để render giao diện xong mới bật thông báo
+        setTimeout(() => {
+            alert(`Bạn đã ${msg}.\nQuỹ thời gian thay đổi: ${formatTime(savedTime)}`);
+        }, 100);
+    }
+
+    function tick() {
+        elapsedSeconds++;
+        let remaining = BLOCK_SECONDS - elapsedSeconds;
+        
+        const timerEl = document.getElementById('timerDisplay');
+        if (remaining < 0) {
+            timerEl.style.color = "red";
+        }
+        timerEl.innerText = formatTime(remaining);
+    }
+</script>
+
+</body>
+</html>
