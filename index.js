@@ -60,6 +60,7 @@ const htmlContent = `
         :root {
             --primary-color: #4CAF50;
             --danger-color: #f44336;
+            --warning-color: #ff9800;
             --bg-color: #f9fafb;
             --box-bg: #ffffff;
         }
@@ -105,8 +106,8 @@ const htmlContent = `
             font-variant-numeric: tabular-nums;
         }
         .btn-group button, .login-btn {
-            padding: 10px 20px;
-            font-size: 1rem;
+            padding: 10px 16px;
+            font-size: 0.95rem;
             border: none;
             border-radius: 6px;
             cursor: pointer;
@@ -118,6 +119,7 @@ const htmlContent = `
         .btn-group button:disabled { opacity: 0.5; cursor: not-allowed; }
         #btnStart, .login-btn { background-color: var(--primary-color); }
         #btnStop { background-color: var(--danger-color); }
+        #btnReset { background-color: var(--warning-color); }
         
         .history-section { margin-top: 30px; text-align: left; }
         .history-section h3 { font-size: 1.1rem; margin-bottom: 10px; }
@@ -180,6 +182,7 @@ const htmlContent = `
     <div class="btn-group">
         <button id="btnStart" onclick="startTimer()">Bắt đầu</button>
         <button id="btnStop" onclick="stopTimer()" disabled>Dừng & Cộng dồn</button>
+        <button id="btnReset" onclick="resetData()">Reset dữ liệu</button>
         <button style="background: #6c757d;" onclick="logout()">Đăng xuất</button>
     </div>
 
@@ -376,6 +379,38 @@ const htmlContent = `
             timerEl.style.color = "red";
         }
         timerEl.innerText = formatTime(remaining);
+    }
+
+    // --- HÀM MỚI: RESET TOÀN BỘ DỮ LIỆU ---
+    function resetData() {
+        if (!confirm("⚠️ Bạn có chắc chắn muốn đưa quỹ thời gian về 0 và xóa toàn bộ lịch sử?\\nHành động này không thể hoàn tác!")) {
+            return;
+        }
+
+        // Nếu bộ đếm đang chạy thì dừng lại
+        if (isRunning) {
+            isRunning = false;
+            clearInterval(timerInterval);
+            document.getElementById('timerDisplay').innerText = formatTime(BLOCK_SECONDS, false);
+            document.getElementById('timerDisplay').style.color = "#333";
+            document.getElementById('btnStart').disabled = false;
+            document.getElementById('btnStop').disabled = true;
+            
+            const taskInput = document.getElementById('taskEntry');
+            taskInput.disabled = false;
+            taskInput.value = '';
+        }
+
+        // Đặt lại dữ liệu
+        timeBank = 0;
+        historyData = [];
+
+        // Cập nhật giao diện & lưu lên server
+        updateBankDisplay();
+        renderHistory();
+        saveData();
+
+        alert("✅ Đã reset toàn bộ dữ liệu thành công!");
     }
 </script>
 
